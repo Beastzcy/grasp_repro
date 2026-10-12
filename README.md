@@ -1,4 +1,4 @@
-# 桌面物体抓取与按压系统 · 感知与决策算法独立实现（项目包）
+# 桌面物体抓取与按压系统 
 
 从 RGB 图像到可执行动作位姿的完整软件管线，已在 6GB 消费级 GPU（RTX 3060 Laptop）上验证通过。
 
@@ -13,8 +13,7 @@
 ├── data/                     测试图片
 ├── output/                   全部实测结果（PLY 点云 / PNG 可视化 / JSON 位姿）
 ├── requirements.txt          精确依赖版本（pip freeze 导出）
-├── 复现总结.md               管线原理、实测数据、踩坑记录、实验室断点接续清单
-└── 简历写法.md               项目经历简历表述与面试应答要点
+
 ```
 
 ## 环境与运行
@@ -23,11 +22,6 @@
 - 国内安装源：清华 PyPI（HTTPS）+ 阿里云 pytorch-wheels（仅 HTTP）
 - 运行顺序：
 
-```powershell
-python scripts\01_detect_segment.py data\beignets-task-guide.png "cup . plate"
-python scripts\02_pointcloud.py data\beignets-task-guide.png "cup . plate"
-python scripts\03_press_point.py
-python scripts\04_grasp_candidates.py
 ```
 
 ## 权重文件（未包含在本包，共约 3.6GB）
