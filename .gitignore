@@ -1,0 +1,7 @@
+# 模型权重共约3.6GB, 超出 GitHub 单文件 100MB 限制, 不入库
+# 下载方式见 README.md 的"权重文件"表格
+weights/
+
+# Python 运行时产物
+__pycache__/
+*.pyc
