@@ -23,6 +23,9 @@ import cv2
 import numpy as np
 import torch
 
+# 6GB 显存较紧: 允许显存分配器合并碎片, 必须在 CUDA 初始化前设置
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 sys.stdout.reconfigure(encoding="utf-8")
 
 # ---------- 路径 ----------
@@ -53,12 +56,9 @@ args = parser.parse_args()
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[1/4] 设备: {device}")
 
-# ---------- 第一步: GroundingDINO 检测 + SAM 分割 (与阶段 1 相同) ----------
-print("[2/4] 加载 GroundingDINO + SAM ...")
+# ---------- 第一步: GroundingDINO 检测 ----------
+print("[2/4] 加载 GroundingDINO ...")
 gd = load_model(GD_CFG, GD_CKPT, device=device)
-sam = sam_model_registry["vit_h"](checkpoint=SAM_CKPT)
-sam.to(device)
-sam_predictor = SamPredictor(sam)
 
 image_source, image_tensor = load_image(args.image)
 with torch.autocast(device_type=device, dtype=torch.float16, enabled=(device == "cuda")):
@@ -78,6 +78,16 @@ boxes_xyxy = boxes_xyxy.cpu().numpy()
 x_c, y_c, bw, bh = boxes_xyxy[:, 0], boxes_xyxy[:, 1], boxes_xyxy[:, 2], boxes_xyxy[:, 3]
 boxes_xyxy = np.stack([x_c - bw / 2, y_c - bh / 2, x_c + bw / 2, y_c + bh / 2], axis=1)
 
+# 检测已完成, 先释放 GroundingDINO 显存, 再加载 SAM (6GB 卡两者同时驻留会 OOM)
+del gd
+torch.cuda.empty_cache()
+
+# ---------- SAM 分割 ----------
+print("      加载 SAM ViT-H ...")
+sam = sam_model_registry["vit_h"](checkpoint=SAM_CKPT)
+sam.to(device)
+sam_predictor = SamPredictor(sam)
+
 sam_predictor.set_image(image_source)
 masks = []
 for xyxy in boxes_xyxy:
@@ -88,8 +98,8 @@ for xyxy in boxes_xyxy:
     masks.append(m[0])
 masks = np.array(masks)  # (N, H, W) bool
 
-# 释放检测分割模型显存, 给深度模型腾地方
-del gd, sam, sam_predictor
+# 释放分割模型显存, 给深度模型腾地方
+del sam, sam_predictor
 torch.cuda.empty_cache()
 
 # ---------- 第二步: 估计深度 (代替相机的 depth 图) ----------
